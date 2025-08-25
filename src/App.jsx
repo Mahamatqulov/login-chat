@@ -10,6 +10,7 @@ import Home from "./page/home";
 import Page2 from "./page/Page2";
 import Chat from "./components/Chat";
 import Login from "./page/Login";
+import GroupChat from "./components/GroupChat";
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -42,6 +43,14 @@ function App() {
                 element: (
                   <ProtectedRoute>
                     <Chat />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "groupchat",
+                element: (
+                  <ProtectedRoute>
+                    <GroupChat />
                   </ProtectedRoute>
                 ),
               },
