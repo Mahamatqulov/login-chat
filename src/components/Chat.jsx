@@ -1,13 +1,17 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import { BsTelephoneForwardFill, BsPeople, BsPlus } from "react-icons/bs";
+import { BsTelephoneForwardFill, BsPlus } from "react-icons/bs";
 import { FaUserFriends } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import { MdEdit } from "react-icons/md";
-import { RiEdit2Fill } from "react-icons/ri";
+import { BsCameraVideoFill } from "react-icons/bs";
+import { MdCancel } from "react-icons/md";
+import { BsTelephoneFill } from "react-icons/bs";
+import { toast } from "react-toastify";
 
 export default function Chat() {
+  const token = localStorage.getItem("access_token");
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -31,7 +35,600 @@ export default function Chat() {
   const notifSocketRef = useRef(null);
   const [editingMessage, setEditingMessage] = useState(null);
 
-  const token = localStorage.getItem("access_token");
+  ////////
+  const [isOpen, setIsOpen] = useState(false);
+
+  const [activeCall, setActiveCall] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const pcRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const [isVideoOn, setIsVideoOn] = useState(false);
+
+  // WebRTC functions
+  const checkBrowserCompatibility = useCallback(() => {
+    const issues = [];
+
+    if (!navigator.mediaDevices) {
+      issues.push("Media devices not supported");
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      issues.push("getUserMedia not supported");
+    }
+
+    if (!window.RTCPeerConnection) {
+      issues.push("WebRTC not supported");
+    }
+
+    if (!window.RTCSessionDescription) {
+      issues.push("RTCSessionDescription not supported");
+    }
+
+    if (!window.RTCIceCandidate) {
+      issues.push("RTCIceCandidate not supported");
+    }
+
+    return issues;
+  }, []);
+
+  const ensurePeerConnection = useCallback(() => {
+    if (pcRef.current && pcRef.current.connectionState !== "closed")
+      return pcRef.current;
+
+    const pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+      ],
+      iceCandidatePoolSize: 10,
+    });
+
+    pc.oniceconnectionstatechange = () => {
+      console.log("ICE connection state:", pc.iceConnectionState);
+      if (pc.iceConnectionState === "failed") {
+        console.log("ICE connection failed, attempting restart");
+        pc.restartIce();
+      }
+    };
+
+    pc.onicecandidate = async (event) => {
+      if (event.candidate && activeCall?.id) {
+        console.log("📨 Sending ICE candidate:", event.candidate);
+        try {
+          await sendSignal(activeCall.id, {
+            type: "ice",
+            candidate: event.candidate,
+          });
+        } catch (error) {
+          console.error("Error sending ICE candidate:", error);
+        }
+      }
+    };
+
+    pc.ontrack = (event) => {
+      console.log("📡 Received remote stream:", event.streams[0]);
+      if (remoteVideoRef.current && event.streams[0]) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+
+        // Force play the video
+        remoteVideoRef.current.play().catch((error) => {
+          console.error("Error playing remote video:", error);
+        });
+      }
+    };
+
+    pc.onnegotiationneeded = async () => {
+      console.log("Negotiation needed");
+    };
+
+    pcRef.current = pc;
+    return pc;
+  }, [activeCall]);
+
+  const getLocalMedia = useCallback(async (video = true, audio = true) => {
+    try {
+      console.log("🎥 Attempting to access media devices...", { video, audio });
+
+      // Stop existing stream if any
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: video
+          ? {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: "user",
+            }
+          : false,
+        audio: audio
+          ? {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            }
+          : false,
+      });
+
+      console.log("✅ Media stream obtained successfully");
+      localStreamRef.current = stream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        // Force play the video
+        localVideoRef.current.play().catch((error) => {
+          console.error("Error playing local video:", error);
+        });
+      }
+
+      setIsVideoOn(video);
+      return stream;
+    } catch (error) {
+      console.error("❌ Error accessing media devices:", error);
+
+      // Specific error handling
+      if (error.name === "NotAllowedError") {
+        toast.error(
+          "Camera/microphone access denied. Please allow permissions."
+        );
+      } else if (error.name === "NotFoundError") {
+        toast.error("No camera or microphone found.");
+      } else if (error.name === "NotReadableError") {
+        toast.error("Camera/microphone is already in use.");
+      } else {
+        toast.error(`Media access error: ${error.message}`);
+      }
+
+      throw error;
+    }
+  }, []);
+
+  const stopLocalMedia = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    setIsVideoOn(false);
+  }, []);
+
+  const sendSignal = useCallback(
+    async (callId, payload) => {
+      try {
+        console.log("Sending signal:", payload.type, "to call:", callId);
+        const response = await fetch(
+          `http://5.133.122.226:8001/api/chat/calls/${callId}/signal/`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to send signal: ${errorText}`);
+        }
+
+        console.log("Signal sent successfully:", payload.type);
+      } catch (error) {
+        console.error("Error sending signal:", error);
+        throw error;
+      }
+    },
+    [token]
+  );
+
+  // ICE candidate'larni yuborish uchun qo'shimcha funksiya
+  const sendPendingIceCandidates = useCallback(
+    async (callId) => {
+      if (
+        pcRef.current?.pendingIceCandidates &&
+        pcRef.current.pendingIceCandidates.length > 0
+      ) {
+        console.log(
+          "Sending pending ICE candidates:",
+          pcRef.current.pendingIceCandidates.length
+        );
+
+        for (const candidate of pcRef.current.pendingIceCandidates) {
+          try {
+            await sendSignal(callId, {
+              type: "ice",
+              candidate: candidate,
+            });
+          } catch (error) {
+            console.error("Error sending ICE candidate:", error);
+          }
+        }
+
+        pcRef.current.pendingIceCandidates = [];
+      }
+    },
+    [sendSignal]
+  );
+
+  const initiateCall = useCallback(
+    async (callType) => {
+      if (!selectedUser?.id) {
+        toast.error("Please select a user to call");
+        return;
+      }
+
+      try {
+        console.log("Initiating", callType, "call to:", selectedUser.id);
+
+        const response = await fetch(
+          "http://5.133.122.226:8001/api/chat/calls/initiate_call/",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              receiver_id: selectedUser.id,
+              call_type: callType,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to initiate call: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log("Call initiated:", data);
+        setActiveCall(data.call);
+
+        // Get local media first
+        const stream = await getLocalMedia(callType === "video", true);
+
+        // Create peer connection
+        const pc = ensurePeerConnection();
+
+        // Add local stream tracks to peer connection
+        stream.getTracks().forEach((track) => {
+          pc.addTrack(track, stream);
+        });
+
+        // Create and set local offer
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: callType === "video",
+        });
+
+        await pc.setLocalDescription(offer);
+        console.log("Local offer set:", offer);
+
+        // Send offer to remote peer
+        await sendSignal(data.call.id, {
+          type: "offer",
+          sdp: offer,
+          call_type: callType,
+        });
+
+        toast.success(
+          `${callType === "video" ? "Video" : "Voice"} call initiated`
+        );
+      } catch (error) {
+        console.error("Error initiating call:", error);
+        toast.error(
+          "Failed to start call. Please check your camera/microphone permissions."
+        );
+        setActiveCall(null);
+        stopLocalMedia();
+      }
+    },
+    [
+      selectedUser,
+      token,
+      getLocalMedia,
+      ensurePeerConnection,
+      sendSignal,
+      stopLocalMedia,
+    ]
+  );
+
+  const answerCall = useCallback(async () => {
+    if (!incomingCall) return;
+
+    try {
+      console.log("Answering incoming call:", incomingCall.callId);
+
+      const response = await fetch(
+        `http://5.133.122.226:8001/api/chat/calls/${incomingCall.callId}/answer_call/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ call_id: incomingCall.callId }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to answer call: ${errorText}`);
+      }
+
+      setActiveCall({
+        id: incomingCall.callId,
+        status: "ongoing",
+        call_type: incomingCall.callType,
+      });
+
+      setIncomingCall(null);
+
+      // Get local media
+      const stream = await getLocalMedia(
+        incomingCall.callType === "video",
+        true
+      );
+
+      // Create peer connection
+      const pc = ensurePeerConnection();
+
+      // Add local stream tracks
+      stream.getTracks().forEach((track) => {
+        console.log("Adding track to peer connection:", track.kind);
+        pc.addTrack(track, stream);
+      });
+
+      // ICE candidate'larni yuborish
+      setTimeout(() => {
+        sendPendingIceCandidates(incomingCall.callId);
+      }, 1000);
+
+      toast.success("Call answered successfully");
+    } catch (error) {
+      console.error("Error answering call:", error);
+      toast.error("Failed to answer call. Please try again.");
+      setIncomingCall(null);
+      stopLocalMedia();
+    }
+  }, [
+    incomingCall,
+    token,
+    getLocalMedia,
+    ensurePeerConnection,
+    stopLocalMedia,
+    sendPendingIceCandidates,
+  ]);
+
+  const rejectCall = useCallback(async () => {
+    if (!incomingCall) return;
+
+    try {
+      const response = await fetch(
+        `http://5.133.122.226:8001/api/chat/calls/${incomingCall.callId}/reject_call/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to reject call");
+
+      setIncomingCall(null);
+      stopLocalMedia();
+      toast.info("Call rejected");
+    } catch (error) {
+      console.error("Error rejecting call:", error);
+    }
+  }, [incomingCall, token, stopLocalMedia]);
+
+  const endCall = useCallback(async () => {
+    if (!activeCall) return;
+
+    try {
+      const response = await fetch(
+        `http://5.133.122.226:8001/api/chat/calls/${activeCall.id}/end_call/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to end call");
+
+      setActiveCall(null);
+      stopLocalMedia();
+
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+
+      toast.info("Call ended");
+    } catch (error) {
+      console.error("Error ending call:", error);
+    }
+  }, [activeCall, token, stopLocalMedia]);
+
+  // Handle incoming calls and signals via WebSocket
+  const handleCallSignal = useCallback(
+    async (payload) => {
+      const pc = ensurePeerConnection();
+
+      try {
+        console.log("Handling call signal:", payload.type, payload);
+
+        if (payload.type === "offer" && payload.sdp) {
+          console.log("Received offer, setting remote description");
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+
+          // Get local media
+          const stream = await getLocalMedia(
+            payload.call_type === "video",
+            true
+          );
+
+          // Add local tracks to connection
+          stream.getTracks().forEach((track) => {
+            pc.addTrack(track, stream);
+          });
+
+          // Create and send answer
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          console.log("Sending answer to offer");
+          await sendSignal(payload.call_id, {
+            type: "answer",
+            sdp: answer,
+          });
+        } else if (payload.type === "answer" && payload.sdp) {
+          console.log("Received answer, setting remote description");
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        } else if (payload.type === "ice" && payload.candidate) {
+          console.log("Received ICE candidate:", payload.candidate);
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            console.log("ICE candidate added successfully");
+          } catch (error) {
+            console.error("Error adding ICE candidate:", error);
+            // Store candidate for later if needed
+            if (!pcRef.current.pendingCandidates) {
+              pcRef.current.pendingCandidates = [];
+            }
+            pcRef.current.pendingCandidates.push(payload.candidate);
+          }
+        }
+      } catch (error) {
+        console.error("Error handling signal:", error);
+      }
+    },
+    [ensurePeerConnection, getLocalMedia, sendSignal]
+  );
+
+  useEffect(() => {
+    if (!notifSocketRef.current) return;
+
+    const handleNotification = (data) => {
+      console.log("🔔 Notification received:", data);
+
+      if (data.type === "notification" && data.data) {
+        const payload = data.data;
+
+        if (payload.type === "incoming_call") {
+          console.log("📞 Incoming call notification:", payload);
+          setIncomingCall({
+            callId: payload.call_id,
+            caller: payload.caller,
+            callType: payload.call_type,
+          });
+          toast.info(
+            `Incoming ${payload.call_type} call from ${
+              payload.caller?.fio || payload.caller?.username || "Unknown"
+            }`
+          );
+        } else if (payload.type === "call_answered") {
+          console.log("✅ Call answered notification:", payload);
+          setActiveCall((prev) =>
+            prev ? { ...prev, status: "ongoing" } : prev
+          );
+          toast.success("Call answered successfully");
+        } else if (
+          payload.type === "call_rejected" ||
+          payload.type === "call_ended"
+        ) {
+          console.log("❌ Call ended/rejected notification:", payload);
+          setActiveCall(null);
+          setIncomingCall(null);
+          stopLocalMedia();
+          if (pcRef.current) {
+            pcRef.current.close();
+            pcRef.current = null;
+          }
+          toast.info(
+            payload.type === "call_rejected"
+              ? "Call was rejected"
+              : "Call ended"
+          );
+        } else if (payload.type === "call_signal") {
+          console.log("📡 Call signal received:", payload);
+          handleCallSignal(payload);
+        }
+      }
+    };
+
+    notifSocketRef.current.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleNotification(data);
+      } catch (error) {
+        console.error("Error parsing notification:", error);
+      }
+    };
+
+    return () => {
+      if (notifSocketRef.current) {
+        notifSocketRef.current.onmessage = null;
+      }
+    };
+  }, [handleCallSignal]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      console.log("🧹 Cleaning up video call resources");
+      stopLocalMedia();
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+    };
+  }, [stopLocalMedia]);
+
+  // Check browser compatibility on mount
+  useEffect(() => {
+    const compatibilityIssues = checkBrowserCompatibility();
+    if (compatibilityIssues.length > 0) {
+      console.warn("⚠️ Browser compatibility issues:", compatibilityIssues);
+      toast.warning(
+        "Some video features may not work properly in your browser"
+      );
+    } else {
+      console.log("✅ Browser is compatible with video calls");
+    }
+  }, [checkBrowserCompatibility]);
+
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log("🎥 Video call state changed:", {
+      activeCall,
+      incomingCall,
+      isVideoOn,
+      hasLocalStream: !!localStreamRef.current,
+      hasPeerConnection: !!pcRef.current,
+      peerConnectionState: pcRef.current?.connectionState,
+      iceState: pcRef.current?.iceConnectionState,
+    });
+  }, [activeCall, incomingCall, isVideoOn]);
+
+  /////////////////
+
+  //////chat function
 
   // Message formatini to'g'rilash funksiyasi
   const formatMessage = useCallback(
@@ -717,51 +1314,10 @@ export default function Chat() {
       console.log("Message deleted:", messageId);
     } catch (err) {
       console.error("❌ Message delete error:", err);
-      alert("Xabarni o'chirishda xatolik: " + err.message);
     }
   };
 
   // 6️⃣ Message edit qilish funksiyasi
-  // const editMessage = async (messageId, newContent) => {
-  //   if (!newContent.trim()) return;
-
-  //   try {
-  //     const response = await fetch(
-  //       `http://5.133.122.226:8001/api/chat/messages/${messageId}/edit_message/`,
-  //       {
-  //         method: "PATCH",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${token}`,
-  //         },
-  //         body: JSON.stringify({ content: newContent }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       const errorText = await response.text();
-  //       throw new Error(`Server error ${response.status}: ${errorText}`);
-  //     }
-
-  //     const updatedMessage = await response.json();
-
-  //     // Format the updated message
-  //     const formattedMessage = formatMessage(updatedMessage);
-
-  //     // Update the message in state
-  //     setMessages((prev) =>
-  //       prev.map((msg) => (msg.id === messageId ? formattedMessage : msg))
-  //     );
-
-  //     setEditingMessage(null);
-  //     setContent("");
-
-  //     console.log("✅ Message tahrirlandi:", updatedMessage);
-  //   } catch (err) {
-  //     console.error("❌ Message edit error:", err.message);
-  //   }
-  // };
-
   const editMessage = async (messageId, newContent) => {
     if (!newContent.trim()) return;
 
@@ -838,77 +1394,82 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-[90vh] w-[1250px] justify-center bg-white rounded-lg shadow-sm overflow-hidden font-sans">
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+    <div className="flex h-[95vh] w-[1750px] mt-5 justify-center bg-white rounded-2xl shadow-2xl overflow-hidden font-sans border border-gray-100">
+      <div className="w-80 bg-gradient-to-b from-slate-50 to-white border-r border-gray-100 flex flex-col">
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex justify-between items-center">
-            <h2 className="font-medium text-gray-900 text-base">Chats</h2>
+            <h2 className="font-semibold text-gray-900 text-lg tracking-tight">
+              Chats
+            </h2>
           </div>
-          <div className="text-xs text-gray-500 mt-1">
-            Status: {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+          <div className="text-sm text-gray-600 mt-2 flex items-center gap-2">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? "bg-emerald-500" : "bg-red-500"
+              }`}
+            ></div>
+            <span>{isConnected ? "Connected" : "Disconnected"}</span>
           </div>
         </div>
 
-        {/* Tablar */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-100 bg-white">
           <button
-            className={`flex-1 py-2 text-center font-medium text-sm ${
+            className={`flex-1 py-4 text-center font-medium text-sm transition-all duration-200 ${
               activeTab === "users"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
+                ? "text-blue-600 border-b-2 border-blue-500 bg-blue-50/50"
+                : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
             }`}
             onClick={() => setActiveTab("users")}
           >
-            <div className="flex items-center justify-center gap-1">
-              <FaUserFriends size={14} />
+            <div className="flex items-center justify-center gap-2">
+              <FaUserFriends size={16} />
               <span>Contacts</span>
             </div>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {
-            // Foydalanuvchilar ro'yxati
-            users.map((userItem) => (
-              <div
-                key={userItem.id}
-                onClick={() => selectChat({ ...userItem, chat_type: "user" })}
-                className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-150 ${
-                  selectedUser?.id === userItem.id
-                    ? "bg-blue-50 border-r-2 border-blue-500"
-                    : ""
-                }`}
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3 shadow-sm">
-                  {userItem.fio?.charAt(0) ||
-                    userItem.username?.charAt(0) ||
-                    "?"}
+        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white to-slate-50">
+          {users.map((userItem) => (
+            <div
+              key={userItem.id}
+              onClick={() => selectChat({ ...userItem, chat_type: "user" })}
+              className={`flex items-center p-4 cursor-pointer hover:bg-blue-50/70 transition-all duration-200 border-b border-gray-50/50 ${
+                selectedUser?.id === userItem.id
+                  ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-r-3 border-blue-500 shadow-sm"
+                  : ""
+              }`}
+            >
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold mr-4 shadow-lg ring-2 ring-white">
+                {userItem.fio?.charAt(0) || userItem.username?.charAt(0) || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-900 text-sm truncate">
+                  {userItem.fio || userItem.username || "No Name"}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 text-sm truncate">
-                    {userItem.fio || userItem.username || "No Name"}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-0.5 flex items-center">
-                    <span
-                      className={`w-2 h-2 rounded-full mr-1 ${
-                        userItem.is_online ? "bg-green-500" : "bg-gray-400"
-                      }`}
-                    ></span>
+                <div className="text-xs text-gray-500 mt-1 flex items-center">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full mr-2 ${
+                      userItem.is_online
+                        ? "bg-emerald-500 shadow-sm"
+                        : "bg-gray-400"
+                    }`}
+                  ></span>
+                  <span className="font-medium">
                     {userItem.is_online ? "Online" : "Offline"}
-                  </div>
+                  </span>
                 </div>
               </div>
-            ))
-          }
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="flex-1 flex flex-col bg-gradient-to-b from-gray-50 to-gray-100">
         {currentChat ? (
           <>
-            <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
+            <div className="p-6 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm">
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold mr-4 shadow-lg ring-2 ring-white">
                   {selectedUser
                     ? selectedUser.fio?.charAt(0) ||
                       selectedUser.username?.charAt(0) ||
@@ -916,46 +1477,57 @@ export default function Chat() {
                     : selectedGroup.name?.charAt(0) || "G"}
                 </div>
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-semibold text-gray-900 text-base">
                     {selectedUser
                       ? selectedUser.fio || selectedUser.username || "No Name"
                       : selectedGroup.name}
                   </div>
-                  <div className="text-xs text-gray-500 flex items-center">
+                  <div className="text-sm text-gray-600 flex items-center mt-1">
                     {selectedUser ? (
                       <>
                         <span
-                          className={`w-2 h-2 rounded-full mr-1 ${
+                          className={`w-2.5 h-2.5 rounded-full mr-2 ${
                             selectedUser.is_online
-                              ? "bg-green-500"
+                              ? "bg-emerald-500 shadow-sm"
                               : "bg-gray-400"
                           }`}
                         ></span>
-                        {selectedUser.is_online ? "online" : "offline"}
+                        <span className="font-medium">
+                          {selectedUser.is_online ? "online" : "offline"}
+                        </span>
                       </>
                     ) : (
                       <>
-                        <span className="w-2 h-2 rounded-full mr-1 bg-green-500"></span>
-                        {selectedGroup.member_count} members
+                        <span className="w-2.5 h-2.5 rounded-full mr-2 bg-emerald-500 shadow-sm"></span>
+                        <span className="font-medium">
+                          {selectedGroup.member_count} members
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 cursor-pointer pr-5">
-                <BsTelephoneForwardFill size={18} />
+              <div className="text-gray-600 cursor-pointer hover:text-blue-600 transition-colors duration-200">
+                <div className="p-3 rounded-full hover:bg-blue-50 transition-all duration-200">
+                  <BsTelephoneForwardFill
+                    onClick={() => setIsOpen(true)}
+                    size={20}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100 ">
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-gradient-to-b from-slate-50 via-gray-50 to-slate-100">
               {isLoading ? (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-lg">Loading messages...</div>
+                <div className="text-center text-gray-500 py-12">
+                  <div className="text-xl font-medium">Loading messages...</div>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-lg">No messages yet</div>
-                  <div className="text-sm">Start a conversation!</div>
+                <div className="text-center text-gray-500 py-12">
+                  <div className="text-xl font-medium mb-2">
+                    No messages yet
+                  </div>
+                  <div className="text-base">Start a conversation!</div>
                 </div>
               ) : (
                 messages.map((msg, index) => {
@@ -969,38 +1541,36 @@ export default function Chat() {
                         isMyMessage ? "justify-end " : "justify-start"
                       }`}
                     >
-                      {/* 👇 Sender avatar faqat delete qilinmagan xabarda ko'rsatiladi */}
                       {!isMyMessage && !msg.isDeleted && (
-                        <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3 mt-1 flex-shrink-0">
+                        <div className="w-9 h-9 bg-gradient-to-br from-gray-500 to-gray-700 rounded-full flex items-center justify-center text-white text-sm font-semibold mr-3 mt-1 flex-shrink-0 shadow-md ring-2 ring-white">
                           {senderName?.charAt(0) || "?"}
                         </div>
                       )}
 
                       <div className="flex flex-col max-w-[75%]">
-                        {/* Sender ismi faqat delete qilinmagan xabarda */}
                         {!isMyMessage && !selectedUser && !msg.isDeleted && (
-                          <div className="text-xs font-medium mb-1 text-gray-600 ml-1">
+                          <div className="text-sm font-semibold mb-2 text-gray-700 ml-1">
                             {senderName}
                           </div>
                         )}
 
                         <div
-                          className={`px-4 py-3 rounded-2xl break-words relative shadow-sm ${
+                          className={`px-5 py-4 rounded-2xl break-words relative shadow-md transition-all duration-200 hover:shadow-lg ${
                             isMyMessage
-                              ? "bg-blue-500 text-white rounded-br-md"
-                              : "bg-gray-200 text-gray-800 rounded-bl-md"
+                              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md"
+                              : "bg-white text-gray-800 rounded-bl-md border border-gray-100"
                           }`}
                         >
                           <div className="text-sm leading-relaxed">
                             {msg.isDeleted ? (
-                              <span className="italic text-gray-400">
+                              <span className="italic text-gray-400 font-medium">
                                 o'chirilgan xabar
                               </span>
                             ) : (
                               <>
                                 {msg.content}
                                 {msg.is_edited && (
-                                  <span className="text-xs ml-2 italic opacity-70">
+                                  <span className="text-xs ml-2 italic opacity-75 font-medium">
                                     (tahrirlangan)
                                   </span>
                                 )}
@@ -1010,11 +1580,11 @@ export default function Chat() {
 
                           {!msg.isDeleted && (
                             <div
-                              className={`text-xs mt-2 flex justify-between items-center ${
+                              className={`text-xs mt-3 flex justify-between items-center ${
                                 isMyMessage ? "text-blue-100" : "text-gray-500"
                               }`}
                             >
-                              <span>
+                              <span className="font-medium">
                                 {new Date(msg.timestamp).toLocaleTimeString(
                                   [],
                                   {
@@ -1026,20 +1596,20 @@ export default function Chat() {
                               </span>
 
                               {isMyMessage && (
-                                <div className="flex ml-2">
+                                <div className="flex ml-3 gap-1">
                                   <button
-                                    className="hover:text-red-500 cursor-pointer"
+                                    className="hover:text-red-300 cursor-pointer p-1 rounded transition-all duration-200 hover:bg-red-500/20"
                                     onClick={() => deleteMessage(msg.id)}
                                     title="O'chirish"
                                   >
-                                    <MdDelete />
+                                    <MdDelete size={16} />
                                   </button>
                                   <button
-                                    className="ml-2 hover:text-yellow-500 cursor-pointer"
+                                    className="hover:text-yellow-300 cursor-pointer p-1 rounded transition-all duration-200 hover:bg-yellow-500/20"
                                     onClick={() => startEdit(msg)}
                                     title="Tahrirlash"
                                   >
-                                    <MdEdit />
+                                    <MdEdit size={16} />
                                   </button>
                                 </div>
                               )}
@@ -1049,7 +1619,7 @@ export default function Chat() {
                       </div>
 
                       {isMyMessage && !msg.isDeleted && (
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-medium ml-3 mt-1 flex-shrink-0">
+                        <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center text-white text-sm font-semibold ml-3 mt-1 flex-shrink-0 shadow-md ring-2 ring-white">
                           Me
                         </div>
                       )}
@@ -1060,7 +1630,7 @@ export default function Chat() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="flex items-center p-4 bg-white border-t border-gray-200 shadow-sm">
+            <div className="flex items-center p-6 bg-white border-t border-gray-100 shadow-lg">
               <div className="flex-1 relative">
                 <input
                   type="text"
@@ -1076,23 +1646,23 @@ export default function Chat() {
                       cancelEdit();
                     }
                   }}
-                  className="w-full border-2 border-gray-200 rounded-full px-5 py-3 pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-400 bg-gray-50 focus:bg-white"
+                  className="w-full border-2 border-gray-200 rounded-full px-6 py-4 pr-28 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-500 bg-gray-50 focus:bg-white shadow-sm hover:shadow-md focus:shadow-lg"
                   disabled={!roomId || !isConnected || isLoading}
                 />
 
                 {editingMessage ? (
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex space-x-2">
                     <button
                       onClick={saveEdit}
                       disabled={!content.trim()}
-                      className="bg-green-500 hover:bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-50"
                       title="Saqlash"
                     >
                       ✓
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="bg-gray-500 hover:bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                      className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl"
                       title="Bekor qilish"
                     >
                       ✕
@@ -1102,7 +1672,7 @@ export default function Chat() {
                   <button
                     onClick={sendMessage}
                     disabled={!content.trim()}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-50"
                     title="Yuborish"
                   >
                     ➤
@@ -1114,10 +1684,10 @@ export default function Chat() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-gray-500 text-center">
-              <div className="text-lg mb-2">
+              <div className="text-xl font-semibold mb-3">
                 Select a user or group to start chatting
               </div>
-              <div className="text-sm">
+              <div className="text-base">
                 Choose someone from the left sidebar
               </div>
             </div>
@@ -1125,85 +1695,196 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Guruh yaratish modali */}
-      {showCreateGroupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Create New Group</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Group Name
-              </label>
-              <input
-                type="text"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Enter group name"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <textarea
-                value={newGroupDescription}
-                onChange={(e) => setNewGroupDescription(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Enter group description"
-                rows="3"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={isPublicGroup}
-                  onChange={(e) => setIsPublicGroup(e.target.checked)}
-                  className="mr-2"
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-gray-900 to-black text-white rounded-3xl shadow-2xl w-[900px] p-10 flex flex-col items-center border border-gray-700">
+            <div className="flex gap-6 mb-8 w-full">
+              {/* Local video */}
+              <div className="w-1/3 h-52 rounded-3xl overflow-hidden bg-gray-800 relative shadow-2xl border border-gray-600">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
                 />
-                <span className="text-sm">Public Group</span>
-              </label>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Select Members
-              </label>
-              <div className="border border-gray-300 rounded p-2 max-h-40 overflow-y-auto">
-                {users.map((user) => (
-                  <div key={user.id} className="flex items-center mb-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedMembers.some((m) => m.id === user.id)}
-                      onChange={() => toggleMemberSelection(user)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">{user.fio || user.username}</span>
+                {!localStreamRef.current && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                    <div className="text-center">
+                      <div className="text-3xl mb-3">📹</div>
+                      <div className="text-sm text-gray-300 font-medium">
+                        Local Camera
+                      </div>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
-                {selectedMembers.length} members selected
+
+              {/* Remote video */}
+              <div className="w-2/3 h-52 rounded-3xl overflow-hidden bg-gray-800 relative shadow-2xl border border-gray-600">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                {!activeCall && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+                    <div className="text-center">
+                      <div className="text-4xl mb-3">👤</div>
+                      <div className="text-sm text-gray-300 font-medium">
+                        Remote User
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowCreateGroupModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={createGroup}
-                className="px-4 py-2 bg-blue-500 text-white rounded text-sm"
-              >
-                Create Group
-              </button>
+            <h2 className="text-2xl font-bold mb-2 text-center">
+              {selectedUser?.fio || selectedUser?.username || "Unknown User"}
+            </h2>
+
+            <div className="text-sm text-gray-300 mt-3 text-center">
+              {(() => {
+                const issues = checkBrowserCompatibility();
+                if (issues.length > 0) {
+                  return (
+                    <div className="bg-yellow-900/30 p-3 rounded-xl border border-yellow-700/50">
+                      ⚠️ Compatibility issues: {issues.join(", ")}
+                    </div>
+                  );
+                }
+                return (
+                  <span className="text-emerald-400 font-medium">
+                    ✅ Browser compatible
+                  </span>
+                );
+              })()}
+            </div>
+
+            {incomingCall && (
+              <p className="text-gray-300 text-base mt-2 font-medium">
+                📞 Incoming {incomingCall.callType} call...
+              </p>
+            )}
+            {activeCall && (
+              <p className="text-gray-300 text-base mt-2 font-medium">
+                {activeCall.status === "ongoing"
+                  ? "🟢 Call in progress"
+                  : "🟡 Call connecting..."}
+              </p>
+            )}
+
+            {/* Connection status */}
+            {pcRef.current && (
+              <p className="text-gray-400 text-sm mt-2 font-medium">
+                ICE: {pcRef.current.iceConnectionState} | PC:{" "}
+                {pcRef.current.connectionState}
+              </p>
+            )}
+
+            <div className="flex items-center justify-center gap-8 mt-12">
+              {incomingCall ? (
+                <>
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={answerCall}
+                      className="p-6 rounded-full bg-green-500 hover:bg-green-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-green-100 hover:ring-green-200"
+                    >
+                      <BsTelephoneFill size={28} className="text-white" />
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Answer
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={rejectCall}
+                      className="p-6 rounded-full bg-red-500 hover:bg-red-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-red-100 hover:ring-red-200"
+                    >
+                      <MdCancel size={32} className="text-white" />
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Reject
+                    </span>
+                  </div>
+                </>
+              ) : activeCall ? (
+                <div className="flex flex-col items-center">
+                  <button
+                    onClick={endCall}
+                    className="p-6 rounded-full bg-red-500 hover:bg-red-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-red-100 hover:ring-red-200"
+                  >
+                    <MdCancel size={32} className="text-white" />
+                  </button>
+                  <span className="text-sm mt-4 font-semibold text-gray-700">
+                    End Call
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => initiateCall("video")}
+                      className="p-6 rounded-full bg-blue-500 hover:bg-blue-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-blue-100 hover:ring-blue-200"
+                    >
+                      <BsCameraVideoFill size={30} className="text-white" />
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Video Call
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => {
+                        stopLocalMedia();
+                        setIsOpen(false);
+                      }}
+                      className="p-6 rounded-full bg-gray-500 hover:bg-gray-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-gray-100 hover:ring-gray-200"
+                    >
+                      <MdCancel size={32} className="text-white" />
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Cancel
+                    </span>
+                  </div>
+
+                  {/* <div className="flex flex-col items-center">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await getLocalMedia(true, false);
+                          toast.success("Camera test successful!");
+                        } catch (error) {
+                          console.error("Camera test failed:", error);
+                        }
+                      }}
+                      className="p-6 rounded-full bg-purple-500 hover:bg-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-purple-100 hover:ring-purple-200"
+                      title="Test camera access"
+                    >
+                      <span className="text-3xl">📷</span>
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Test Camera
+                    </span>
+                  </div> */}
+
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => initiateCall("voice")}
+                      className="p-6 rounded-full bg-indigo-500 hover:bg-indigo-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-110 active:scale-95 ring-4 ring-indigo-100 hover:ring-indigo-200"
+                    >
+                      <BsTelephoneFill size={28} className="text-white" />
+                    </button>
+                    <span className="text-sm mt-4 font-semibold text-gray-700">
+                      Voice Call
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

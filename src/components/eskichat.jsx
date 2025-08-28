@@ -13853,3 +13853,845 @@ export default function Chat() {
     </div>
   );
 }
+
+
+
+
+  // return (
+  //   <div className="flex h-[90vh] w-[1250px] justify-center bg-white rounded-lg shadow-sm overflow-hidden font-sans">
+  //     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+  //       <div className="p-4 border-b border-gray-200 bg-gray-50">
+  //         <div className="flex justify-between items-center">
+  //           <h2 className="font-medium text-gray-900 text-base">Chats</h2>
+  //         </div>
+  //         <div className="text-xs text-gray-500 mt-1">
+  //           Status: {isConnected ? "🟢 Connected" : "🔴 Disconnected"}
+  //         </div>
+  //       </div>
+
+  //       {/* Tablar */}
+  //       <div className="flex border-b border-gray-200">
+  //         <button
+  //           className={`flex-1 py-2 text-center font-medium text-sm ${
+  //             activeTab === "users"
+  //               ? "text-blue-600 border-b-2 border-blue-600"
+  //               : "text-gray-500"
+  //           }`}
+  //           onClick={() => setActiveTab("users")}
+  //         >
+  //           <div className="flex items-center justify-center gap-1">
+  //             <FaUserFriends size={14} />
+  //             <span>Contacts</span>
+  //           </div>
+  //         </button>
+  //       </div>
+
+  //       <div className="flex-1 overflow-y-auto">
+  //         {
+  //           // Foydalanuvchilar ro'yxati
+  //           users.map((userItem) => (
+  //             <div
+  //               key={userItem.id}
+  //               onClick={() => selectChat({ ...userItem, chat_type: "user" })}
+  //               className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-150 ${
+  //                 selectedUser?.id === userItem.id
+  //                   ? "bg-blue-50 border-r-2 border-blue-500"
+  //                   : ""
+  //               }`}
+  //             >
+  //               <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3 shadow-sm">
+  //                 {userItem.fio?.charAt(0) ||
+  //                   userItem.username?.charAt(0) ||
+  //                   "?"}
+  //               </div>
+  //               <div className="flex-1 min-w-0">
+  //                 <div className="font-medium text-gray-900 text-sm truncate">
+  //                   {userItem.fio || userItem.username || "No Name"}
+  //                 </div>
+  //                 <div className="text-xs text-gray-500 mt-0.5 flex items-center">
+  //                   <span
+  //                     className={`w-2 h-2 rounded-full mr-1 ${
+  //                       userItem.is_online ? "bg-green-500" : "bg-gray-400"
+  //                     }`}
+  //                   ></span>
+  //                   {userItem.is_online ? "Online" : "Offline"}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           ))
+  //         }
+  //       </div>
+  //     </div>
+
+  //     <div className="flex-1 flex flex-col bg-gray-50">
+  //       {currentChat ? (
+  //         <>
+  //           <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
+  //             <div className="flex items-center">
+  //               <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+  //                 {selectedUser
+  //                   ? selectedUser.fio?.charAt(0) ||
+  //                     selectedUser.username?.charAt(0) ||
+  //                     "?"
+  //                   : selectedGroup.name?.charAt(0) || "G"}
+  //               </div>
+  //               <div>
+  //                 <div className="font-medium text-gray-900 text-sm">
+  //                   {selectedUser
+  //                     ? selectedUser.fio || selectedUser.username || "No Name"
+  //                     : selectedGroup.name}
+  //                 </div>
+  //                 <div className="text-xs text-gray-500 flex items-center">
+  //                   {selectedUser ? (
+  //                     <>
+  //                       <span
+  //                         className={`w-2 h-2 rounded-full mr-1 ${
+  //                           selectedUser.is_online
+  //                             ? "bg-green-500"
+  //                             : "bg-gray-400"
+  //                         }`}
+  //                       ></span>
+  //                       {selectedUser.is_online ? "online" : "offline"}
+  //                     </>
+  //                   ) : (
+  //                     <>
+  //                       <span className="w-2 h-2 rounded-full mr-1 bg-green-500"></span>
+  //                       {selectedGroup.member_count} members
+  //                     </>
+  //                   )}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //             <div className="text-xs text-gray-500 cursor-pointer pr-5">
+  //               <BsTelephoneForwardFill
+  //                 onClick={() => setIsOpen(true)}
+  //                 size={18}
+  //               />
+  //             </div>
+  //           </div>
+
+  //           <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100 ">
+  //             {isLoading ? (
+  //               <div className="text-center text-gray-500 py-8">
+  //                 <div className="text-lg">Loading messages...</div>
+  //               </div>
+  //             ) : messages.length === 0 ? (
+  //               <div className="text-center text-gray-500 py-8">
+  //                 <div className="text-lg">No messages yet</div>
+  //                 <div className="text-sm">Start a conversation!</div>
+  //               </div>
+  //             ) : (
+  //               messages.map((msg, index) => {
+  //                 const isMyMessage = msg.is_my_message;
+  //                 const senderName = msg.sender_name;
+
+  //                 return (
+  //                   <div
+  //                     key={String(msg.id)}
+  //                     className={`flex ${
+  //                       isMyMessage ? "justify-end " : "justify-start"
+  //                     }`}
+  //                   >
+  //                     {/* 👇 Sender avatar faqat delete qilinmagan xabarda ko'rsatiladi */}
+  //                     {!isMyMessage && !msg.isDeleted && (
+  //                       <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3 mt-1 flex-shrink-0">
+  //                         {senderName?.charAt(0) || "?"}
+  //                       </div>
+  //                     )}
+
+  //                     <div className="flex flex-col max-w-[75%]">
+  //                       {/* Sender ismi faqat delete qilinmagan xabarda */}
+  //                       {!isMyMessage && !selectedUser && !msg.isDeleted && (
+  //                         <div className="text-xs font-medium mb-1 text-gray-600 ml-1">
+  //                           {senderName}
+  //                         </div>
+  //                       )}
+
+  //                       <div
+  //                         className={`px-4 py-3 rounded-2xl break-words relative shadow-sm ${
+  //                           isMyMessage
+  //                             ? "bg-blue-500 text-white rounded-br-md"
+  //                             : "bg-gray-200 text-gray-800 rounded-bl-md"
+  //                         }`}
+  //                       >
+  //                         <div className="text-sm leading-relaxed">
+  //                           {msg.isDeleted ? (
+  //                             <span className="italic text-gray-400">
+  //                               o'chirilgan xabar
+  //                             </span>
+  //                           ) : (
+  //                             <>
+  //                               {msg.content}
+  //                               {msg.is_edited && (
+  //                                 <span className="text-xs ml-2 italic opacity-70">
+  //                                   (tahrirlangan)
+  //                                 </span>
+  //                               )}
+  //                             </>
+  //                           )}
+  //                         </div>
+
+  //                         {!msg.isDeleted && (
+  //                           <div
+  //                             className={`text-xs mt-2 flex justify-between items-center ${
+  //                               isMyMessage ? "text-blue-100" : "text-gray-500"
+  //                             }`}
+  //                           >
+  //                             <span>
+  //                               {new Date(msg.timestamp).toLocaleTimeString(
+  //                                 [],
+  //                                 {
+  //                                   hour: "2-digit",
+  //                                   minute: "2-digit",
+  //                                 }
+  //                               )}
+  //                               {msg.is_edited && " ✏️"}
+  //                             </span>
+
+  //                             {isMyMessage && (
+  //                               <div className="flex ml-2">
+  //                                 <button
+  //                                   className="hover:text-red-500 cursor-pointer"
+  //                                   onClick={() => deleteMessage(msg.id)}
+  //                                   title="O'chirish"
+  //                                 >
+  //                                   <MdDelete />
+  //                                 </button>
+  //                                 <button
+  //                                   className="ml-2 hover:text-yellow-500 cursor-pointer"
+  //                                   onClick={() => startEdit(msg)}
+  //                                   title="Tahrirlash"
+  //                                 >
+  //                                   <MdEdit />
+  //                                 </button>
+  //                               </div>
+  //                             )}
+  //                           </div>
+  //                         )}
+  //                       </div>
+  //                     </div>
+
+  //                     {isMyMessage && !msg.isDeleted && (
+  //                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-medium ml-3 mt-1 flex-shrink-0">
+  //                         Me
+  //                       </div>
+  //                     )}
+  //                   </div>
+  //                 );
+  //               })
+  //             )}
+  //             <div ref={messagesEndRef} />
+  //           </div>
+
+  //           <div className="flex items-center p-4 bg-white border-t border-gray-200 shadow-sm">
+  //             <div className="flex-1 relative">
+  //               <input
+  //                 type="text"
+  //                 placeholder={
+  //                   editingMessage ? "Xabarni tahrirlash..." : "Xabar yozing..."
+  //                 }
+  //                 value={content}
+  //                 onChange={(e) => setContent(e.target.value)}
+  //                 onKeyDown={(e) => {
+  //                   if (e.key === "Enter") {
+  //                     editingMessage ? saveEdit() : sendMessage();
+  //                   } else if (e.key === "Escape") {
+  //                     cancelEdit();
+  //                   }
+  //                 }}
+  //                 className="w-full border-2 border-gray-200 rounded-full px-5 py-3 pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-400 bg-gray-50 focus:bg-white"
+  //                 disabled={!roomId || !isConnected || isLoading}
+  //               />
+
+  //               {editingMessage ? (
+  //                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
+  //                   <button
+  //                     onClick={saveEdit}
+  //                     disabled={!content.trim()}
+  //                     className="bg-green-500 hover:bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                     title="Saqlash"
+  //                   >
+  //                     ✓
+  //                   </button>
+  //                   <button
+  //                     onClick={cancelEdit}
+  //                     className="bg-gray-500 hover:bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                     title="Bekor qilish"
+  //                   >
+  //                     ✕
+  //                   </button>
+  //                 </div>
+  //               ) : (
+  //                 <button
+  //                   onClick={sendMessage}
+  //                   disabled={!content.trim()}
+  //                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                   title="Yuborish"
+  //                 >
+  //                   ➤
+  //                 </button>
+  //               )}
+  //             </div>
+  //           </div>
+  //         </>
+  //       ) : (
+  //         <div className="flex-1 flex items-center justify-center">
+  //           <div className="text-gray-500 text-center">
+  //             <div className="text-lg mb-2">
+  //               Select a user or group to start chatting
+  //             </div>
+  //             <div className="text-sm">
+  //               Choose someone from the left sidebar
+  //             </div>
+  //           </div>
+  //         </div>
+  //       )}
+  //     </div>
+
+  //     {/* Video Call Modal */}
+  //     {isOpen && (
+  //       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+  //         <div className="bg-gray-900 text-white rounded-2xl shadow-lg w-[850px] p-8 flex flex-col items-center">
+  //           {/* Video containers */}
+  //           <div className="flex gap-4 mb-6 w-full">
+  //             {/* Local video */}
+  //             <div className="w-1/3 h-48 rounded-2xl overflow-hidden bg-gray-700 relative">
+  //               <video
+  //                 ref={localVideoRef}
+  //                 autoPlay
+  //                 muted
+  //                 playsInline
+  //                 className="w-full h-full object-cover"
+  //               />
+  //               {!localStreamRef.current && (
+  //                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+  //                   <div className="text-center">
+  //                     <div className="text-2xl mb-2">📹</div>
+  //                     <div className="text-sm text-gray-400">Local Camera</div>
+  //                   </div>
+  //                 </div>
+  //               )}
+  //             </div>
+
+  //             {/* Remote video */}
+  //             <div className="w-2/3 h-48 rounded-2xl overflow-hidden bg-gray-700 relative">
+  //               <video
+  //                 ref={remoteVideoRef}
+  //                 autoPlay
+  //                 playsInline
+  //                 className="w-full h-full object-cover"
+  //               />
+  //               {!activeCall && (
+  //                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+  //                   <div className="text-center">
+  //                     <div className="text-2xl mb-2">👤</div>
+  //                     <div className="text-sm text-gray-400">Remote User</div>
+  //                   </div>
+  //                 </div>
+  //               )}
+  //             </div>
+  //           </div>
+
+  //           {/* Call info */}
+  //           <h2 className="text-xl font-semibold">
+  //             {selectedUser?.fio || selectedUser?.username || "Unknown User"}
+  //           </h2>
+
+  //           {/* Browser compatibility info */}
+  //           <div className="text-xs text-gray-400 mt-2 text-center">
+  //             {(() => {
+  //               const issues = checkBrowserCompatibility();
+  //               if (issues.length > 0) {
+  //                 return (
+  //                   <div className="bg-yellow-900/20 p-2 rounded">
+  //                     ⚠️ Compatibility issues: {issues.join(", ")}
+  //                   </div>
+  //                 );
+  //               }
+  //               return <span>✅ Browser compatible</span>;
+  //             })()}
+  //           </div>
+
+  //           {/* Call status */}
+  //           {incomingCall && (
+  //             <p className="text-gray-400 text-sm mt-1">
+  //               📞 Incoming {incomingCall.callType} call...
+  //             </p>
+  //           )}
+  //           {activeCall && (
+  //             <p className="text-gray-400 text-sm mt-1">
+  //               {activeCall.status === "ongoing"
+  //                 ? "🟢 Call in progress"
+  //                 : "🟡 Call connecting..."}
+  //             </p>
+  //           )}
+
+  //           {/* Connection status */}
+  //           {pcRef.current && (
+  //             <p className="text-gray-400 text-xs mt-1">
+  //               ICE: {pcRef.current.iceConnectionState} | PC:{" "}
+  //               {pcRef.current.connectionState}
+  //             </p>
+  //           )}
+
+  //           {/* Video troubleshooting info */}
+  //           <div className="text-xs text-gray-400 mt-3 text-center max-w-md">
+  //             <div className="bg-gray-800/30 p-3 rounded-lg">
+  //               <div className="font-medium mb-2">Video Troubleshooting:</div>
+  //               <ul className="text-left space-y-1">
+  //                 <li>• Allow camera/microphone permissions when prompted</li>
+  //                 <li>• Make sure no other app is using your camera</li>
+  //                 <li>• Try refreshing the page if video doesn't load</li>
+  //                 <li>• Check browser console for error messages</li>
+  //               </ul>
+  //             </div>
+  //           </div>
+
+  //           {/* Call controls */}
+  //           <div className="flex items-center gap-8 mt-10">
+  //             {incomingCall ? (
+  //               <>
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={answerCall}
+  //                     className="p-4 rounded-full bg-green-600 hover:bg-green-700 transition-colors"
+  //                   >
+  //                     <BsTelephoneFill size={22} />
+  //                   </button>
+  //                   <span className="text-sm mt-2">Answer</span>
+  //                 </div>
+
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={rejectCall}
+  //                     className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition-colors"
+  //                   >
+  //                     <MdCancel size={26} />
+  //                   </button>
+  //                   <span className="text-sm mt-2">Reject</span>
+  //                 </div>
+  //               </>
+  //             ) : activeCall ? (
+  //               <div className="flex flex-col items-center">
+  //                 <button
+  //                   onClick={endCall}
+  //                   className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition-colors"
+  //                 >
+  //                   <MdCancel size={26} />
+  //                 </button>
+  //                 <span className="text-sm mt-2">End Call</span>
+  //               </div>
+  //             ) : (
+  //               <>
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={() => initiateCall("video")}
+  //                     className="p-4 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
+  //                   >
+  //                     <BsCameraVideoFill size={24} />
+  //                   </button>
+  //                   <span className="text-sm mt-2">Video Call</span>
+  //                 </div>
+
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={() => {
+  //                       stopLocalMedia();
+  //                       setIsOpen(false);
+  //                     }}
+  //                     className="p-4 rounded-full bg-gray-600 hover:bg-gray-700 transition-colors"
+  //                   >
+  //                     <MdCancel size={26} />
+  //                   </button>
+  //                   <span className="text-sm mt-2">Cancel</span>
+  //                 </div>
+
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={async () => {
+  //                       try {
+  //                         await getLocalMedia(true, false);
+  //                         toast.success("Camera test successful!");
+  //                       } catch (error) {
+  //                         console.error("Camera test failed:", error);
+  //                       }
+  //                     }}
+  //                     className="p-4 rounded-full bg-purple-600 hover:bg-purple-700 transition-colors"
+  //                     title="Test camera access"
+  //                   >
+  //                     📷
+  //                   </button>
+  //                   <span className="text-sm mt-2">Test Camera</span>
+  //                 </div>
+
+  //                 <div className="flex flex-col items-center">
+  //                   <button
+  //                     onClick={() => initiateCall("voice")}
+  //                     className="p-4 rounded-full bg-blue-600 hover:bg-blue-700 transition-colors"
+  //                   >
+  //                     <BsTelephoneFill size={22} />
+  //                   </button>
+  //                   <span className="text-sm mt-2">Voice Call</span>
+  //                 </div>
+  //               </>
+  //             )}
+  //           </div>
+  //         </div>
+  //       </div>
+  //     )}
+  //   </div>
+  // );
+
+
+
+    // return (
+  //   <div className="flex h-[90vh] w-[1250px] justify-center bg-white rounded-lg shadow-sm overflow-hidden font-sans">
+  //     {/* <ToastContainer position="top-right" autoClose={3000} /> */}
+  //     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+  //       <div className="p-4 border-b border-gray-200 bg-gray-50">
+  //         <div className="flex justify-between items-center">
+  //           <h2 className="font-medium text-gray-900 text-base">Gruops</h2>
+  //           <button
+  //             onClick={() => setShowCreateGroupModal(true)}
+  //             className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+  //             title="Create group"
+  //           >
+  //             <BsPlus size={20} />
+  //           </button>
+  //         </div>
+  //       </div>
+
+  //       {/* Tablar */}
+  //       <div className="flex border-b border-gray-200">
+  //         <button
+  //           className={`flex-1 py-2 text-center font-medium text-sm ${
+  //             activeTab === "groups"
+  //               ? "text-blue-600 border-b-2 border-blue-600"
+  //               : "text-gray-500"
+  //           }`}
+  //           onClick={() => setActiveTab("groups")}
+  //         >
+  //           <div className="flex items-center justify-center gap-1">
+  //             <BsPeople size={16} />
+  //             <span>Groups</span>
+  //           </div>
+  //         </button>
+  //       </div>
+
+  //       <div className="flex-1 overflow-y-auto">
+  //         {groups.map((group) => (
+  //           <div
+  //             key={group.id}
+  //             onClick={() => selectChat(group)}
+  //             className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-150 ${
+  //               selectedGroup?.id === group.id
+  //                 ? "bg-blue-50 border-r-2 border-blue-500"
+  //                 : ""
+  //             }`}
+  //           >
+  //             <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium mr-3 shadow-sm">
+  //               {group.name?.charAt(0) || "G"}
+  //             </div>
+  //             <div className="flex-1 min-w-0">
+  //               <div className="font-medium text-gray-900 text-sm truncate">
+  //                 {group.name}
+  //               </div>
+  //               <div className="text-xs text-gray-500 mt-0.5">
+  //                 {group.member_count} members • {group.group_type}
+  //               </div>
+  //             </div>
+  //           </div>
+  //         ))}
+  //       </div>
+  //     </div>
+
+  //     <div className="flex-1 flex flex-col bg-gray-50">
+  //       {currentChat ? (
+  //         <>
+  //           <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
+  //             <div className="flex items-center">
+  //               <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+  //                 {selectedGroup?.name?.charAt(0) || "G"}
+  //               </div>
+  //               <div>
+  //                 <div className="font-medium text-gray-900 text-sm">
+  //                   {selectedGroup?.name}
+  //                 </div>
+  //                 <div className="text-xs text-gray-500 flex items-center">
+  //                   <span className="w-2 h-2 rounded-full mr-1 bg-green-500"></span>
+  //                   {selectedGroup?.member_count} members
+  //                 </div>
+  //               </div>
+  //             </div>
+  //             <div className="text-xs text-gray-500 cursor-pointer pr-5">
+  //               <BsTelephoneForwardFill size={18} />
+  //             </div>
+  //           </div>
+
+  //           <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100">
+  //             {isLoading ? (
+  //               <div className="text-center text-gray-500 py-8">
+  //                 <div className="text-lg">Loading messages...</div>
+  //               </div>
+  //             ) : messages.length === 0 ? (
+  //               <div className="text-center text-gray-500 py-8">
+  //                 <div className="text-lg">No messages yet</div>
+  //                 <div className="text-sm">Start a conversation!</div>
+  //               </div>
+  //             ) : (
+  //               messages.map((msg, index) => {
+  //                 const isMyMessage = msg.is_my_message;
+  //                 const senderName = msg.sender_name;
+
+  //                 return (
+  //                   <div
+  //                     key={String(msg.id)}
+  //                     className={`flex ${
+  //                       isMyMessage ? "justify-end " : "justify-start"
+  //                     }`}
+  //                   >
+  //                     {/* Sender avatar faqat delete qilinmagan xabarda ko'rsatiladi */}
+  //                     {!isMyMessage && !msg.isDeleted && (
+  //                       <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3 mt-1 flex-shrink-0">
+  //                         {senderName?.charAt(0) || "?"}
+  //                       </div>
+  //                     )}
+
+  //                     <div className="flex flex-col max-w-[75%]">
+  //                       {/* Sender ismi faqat delete qilinmagan xabarda */}
+  //                       {!isMyMessage && !selectedUser && !msg.isDeleted && (
+  //                         <div className="text-xs font-medium mb-1 text-gray-600 ml-1">
+  //                           {senderName}
+  //                         </div>
+  //                       )}
+
+  //                       <div
+  //                         className={`px-4 py-3 rounded-2xl break-words relative shadow-sm ${
+  //                           isMyMessage
+  //                             ? "bg-blue-500 text-white rounded-br-md"
+  //                             : "bg-gray-200 text-gray-800 rounded-bl-md"
+  //                         }`}
+  //                       >
+  //                         <div className="text-sm leading-relaxed">
+  //                           {msg.isDeleted ? (
+  //                             <span className="italic text-gray-400">
+  //                               o'chirilgan xabar
+  //                             </span>
+  //                           ) : msg.isLoading ? (
+  //                             <span className="italic text-gray-400">
+  //                               Yuklanmoqda...
+  //                             </span>
+  //                           ) : (
+  //                             <>
+  //                               {msg.content}
+  //                               {msg.is_edited && (
+  //                                 <span className="text-xs ml-2 italic opacity-70">
+  //                                   (tahrirlangan)
+  //                                 </span>
+  //                               )}
+  //                             </>
+  //                           )}
+  //                         </div>
+
+  //                         {!msg.isDeleted && (
+  //                           <div
+  //                             className={`text-xs mt-2 flex justify-between items-center ${
+  //                               isMyMessage ? "text-blue-100" : "text-gray-500"
+  //                             }`}
+  //                           >
+  //                             <span>
+  //                               {new Date(msg.timestamp).toLocaleTimeString(
+  //                                 [],
+  //                                 {
+  //                                   hour: "2-digit",
+  //                                   minute: "2-digit",
+  //                                 }
+  //                               )}
+  //                               {msg.is_edited && " ✏️"}
+  //                             </span>
+
+  //                             {isMyMessage && !msg.isLoading && (
+  //                               <div className="flex ml-2">
+  //                                 <button
+  //                                   className="hover:text-red-500 cursor-pointer"
+  //                                   onClick={() => deleteMessage(msg.id)}
+  //                                   title="O'chirish"
+  //                                 >
+  //                                   <MdDelete />
+  //                                 </button>
+  //                                 <button
+  //                                   className="ml-2 hover:text-yellow-500 cursor-pointer"
+  //                                   onClick={() => startEdit(msg)}
+  //                                   title="Tahrirlash"
+  //                                 >
+  //                                   <MdEdit />
+  //                                 </button>
+  //                               </div>
+  //                             )}
+  //                           </div>
+  //                         )}
+  //                       </div>
+  //                     </div>
+
+  //                     {isMyMessage && !msg.isDeleted && (
+  //                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-medium ml-3 mt-1 flex-shrink-0">
+  //                         Me
+  //                       </div>
+  //                     )}
+  //                   </div>
+  //                 );
+  //               })
+  //             )}
+  //             <div ref={messagesEndRef} />
+  //           </div>
+
+  //           <div className="flex items-center p-4 bg-white border-t border-gray-200 shadow-sm">
+  //             <div className="flex-1 relative">
+  //               <input
+  //                 type="text"
+  //                 placeholder={
+  //                   editingMessage ? "Xabarni tahrirlash..." : "Xabar yozing..."
+  //                 }
+  //                 value={content}
+  //                 onChange={(e) => setContent(e.target.value)}
+  //                 onKeyDown={(e) => {
+  //                   if (e.key === "Enter") {
+  //                     editingMessage ? saveEdit() : sendMessage();
+  //                   } else if (e.key === "Escape") {
+  //                     cancelEdit();
+  //                   }
+  //                 }}
+  //                 className="w-full border-2 border-gray-200 rounded-full px-5 py-3 pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-400 bg-gray-50 focus:bg-white"
+  //                 disabled={!isConnected || isLoading}
+  //               />
+
+  //               {editingMessage ? (
+  //                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
+  //                   <button
+  //                     onClick={saveEdit}
+  //                     disabled={!content.trim()}
+  //                     className="bg-green-500 hover:bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                     title="Saqlash"
+  //                   >
+  //                     ✓
+  //                   </button>
+  //                   <button
+  //                     onClick={cancelEdit}
+  //                     className="bg-gray-500 hover:bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                     title="Bekor qilish"
+  //                   >
+  //                     ✕
+  //                   </button>
+  //                 </div>
+  //               ) : (
+  //                 <button
+  //                   onClick={sendMessage}
+  //                   disabled={!content.trim()}
+  //                   className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+  //                   title="Yuborish"
+  //                 >
+  //                   ➤
+  //                 </button>
+  //               )}
+  //             </div>
+  //           </div>
+  //         </>
+  //       ) : (
+  //         <div className="flex-1 flex items-center justify-center">
+  //           <div className="text-gray-500 text-center">
+  //             <div className="text-lg mb-2">
+  //               Select a group to start chatting
+  //             </div>
+  //             <div className="text-sm">
+  //               Choose a group from the left sidebar
+  //             </div>
+  //           </div>
+  //         </div>
+  //       )}
+  //     </div>
+
+  //     {/* Guruh yaratish modali */}
+  //     {showCreateGroupModal && (
+  //       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  //         <div className="bg-white rounded-lg p-6 w-96">
+  //           <h2 className="text-xl font-bold mb-4">Create New Group</h2>
+
+  //           <div className="mb-4">
+  //             <label className="block text-sm font-medium mb-1">
+  //               Group Name
+  //             </label>
+  //             <input
+  //               type="text"
+  //               value={newGroupName}
+  //               onChange={(e) => setNewGroupName(e.target.value)}
+  //               className="w-full border border-gray-300 rounded px-3 py-2"
+  //               placeholder="Enter group name"
+  //             />
+  //           </div>
+
+  //           <div className="mb-4">
+  //             <label className="block text-sm font-medium mb-1">
+  //               Description
+  //             </label>
+  //             <textarea
+  //               value={newGroupDescription}
+  //               onChange={(e) => setNewGroupDescription(e.target.value)}
+  //               className="w-full border border-gray-300 rounded px-3 py-2"
+  //               placeholder="Enter group description"
+  //               rows="3"
+  //             />
+  //           </div>
+
+  //           <div className="mb-4">
+  //             <label className="flex items-center">
+  //               <input
+  //                 type="checkbox"
+  //                 checked={isPublicGroup}
+  //                 onChange={(e) => setIsPublicGroup(e.target.checked)}
+  //                 className="mr-2"
+  //               />
+  //               <span className="text-sm">Public Group</span>
+  //             </label>
+  //           </div>
+
+  //           <div className="mb-4">
+  //             <label className="block text-sm font-medium mb-2">
+  //               Select Members
+  //             </label>
+  //             <div className="border border-gray-300 rounded p-2 max-h-40 overflow-y-auto">
+  //               {users.map((user) => (
+  //                 <div key={user.id} className="flex items-center mb-2">
+  //                   <input
+  //                     type="checkbox"
+  //                     checked={selectedMembers.some((m) => m.id === user.id)}
+  //                     onChange={() => toggleMemberSelection(user)}
+  //                     className="mr-2"
+  //                   />
+  //                   <span className="text-sm">{user.fio || user.username}</span>
+  //                 </div>
+  //               ))}
+  //             </div>
+  //             <div className="text-xs text-gray-500 mt-1">
+  //               {selectedMembers.length} members selected
+  //             </div>
+  //           </div>
+
+  //           <div className="flex justify-end gap-2">
+  //             <button
+  //               onClick={() => setShowCreateGroupModal(false)}
+  //               className="px-4 py-2 border border-gray-300 rounded text-sm"
+  //             >
+  //               Cancel
+  //             </button>
+  //             <button
+  //               onClick={createGroup}
+  //               className="px-4 py-2 bg-blue-500 text-white rounded text-sm"
+  //             >
+  //               Create Group
+  //             </button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     )}
+  //   </div>
+  // );

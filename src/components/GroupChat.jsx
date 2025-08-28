@@ -1096,65 +1096,64 @@ export default function Chat() {
 
   if (!user) {
     return (
-      <div className="flex h-[90vh] max-w-[1600px] w-full bg-white rounded-lg shadow-sm overflow-hidden font-sans items-center justify-center">
+      <div className="flex h-[90vh] max-w-[2000px]  bg-white rounded-lg shadow-sm overflow-hidden font-sans items-center justify-center">
         <div className="text-gray-500">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[90vh] w-[1250px] justify-center bg-white rounded-lg shadow-sm overflow-hidden font-sans">
-      <ToastContainer position="top-right" autoClose={3000} />
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+    <div className="flex h-[95vh] w-[1750px] mt-5 justify-center bg-white rounded-xl shadow-lg overflow-hidden font-sans">
+      {/* <ToastContainer position="top-right" autoClose={3000} /> */}
+      <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
+        <div className="p-5 border-b border-gray-200 bg-white">
           <div className="flex justify-between items-center">
-            <h2 className="font-medium text-gray-900 text-base">Gruops</h2>
+            <h2 className="font-semibold text-gray-900 text-lg">Groups</h2>
             <button
               onClick={() => setShowCreateGroupModal(true)}
-              className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+              className="flex items-center justify-center gap-2 p-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
               title="Create group"
             >
-              <BsPlus size={20} />
+              <BsPlus size={20} /> NEW Group
             </button>
           </div>
         </div>
 
-        {/* Tablar */}
-        <div className="flex border-b border-gray-200">
+        <div className="flex border-b border-gray-200 bg-white">
           <button
-            className={`flex-1 py-2 text-center font-medium text-sm ${
+            className={`flex-1 py-3 text-center font-medium text-sm transition-all duration-200 ${
               activeTab === "groups"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500"
+                ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
             onClick={() => setActiveTab("groups")}
           >
-            <div className="flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-2">
               <BsPeople size={16} />
               <span>Groups</span>
             </div>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto bg-gray-50">
           {groups.map((group) => (
             <div
               key={group.id}
               onClick={() => selectChat(group)}
-              className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors duration-150 ${
+              className={`flex items-center p-4 cursor-pointer hover:bg-white transition-all duration-200 border-b border-gray-100 ${
                 selectedGroup?.id === group.id
-                  ? "bg-blue-50 border-r-2 border-blue-500"
+                  ? "bg-white border-r-4 border-blue-500 shadow-sm"
                   : ""
               }`}
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center text-white font-medium mr-3 shadow-sm">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center text-white font-semibold mr-4 shadow-md">
                 {group.name?.charAt(0) || "G"}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-gray-900 text-sm truncate">
+                <div className="font-semibold text-gray-900 text-sm truncate mb-1">
                   {group.name}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">
+                <div className="text-xs text-gray-500">
                   {group.member_count} members • {group.group_type}
                 </div>
               </div>
@@ -1166,34 +1165,36 @@ export default function Chat() {
       <div className="flex-1 flex flex-col bg-gray-50">
         {currentChat ? (
           <>
-            <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
+            <div className="p-5 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm">
               <div className="flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold mr-4 shadow-md">
                   {selectedGroup?.name?.charAt(0) || "G"}
                 </div>
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-semibold text-gray-900 text-base">
                     {selectedGroup?.name}
                   </div>
-                  <div className="text-xs text-gray-500 flex items-center">
-                    <span className="w-2 h-2 rounded-full mr-1 bg-green-500"></span>
+                  <div className="text-sm text-gray-500 flex items-center mt-1">
+                    <span className="w-2 h-2 rounded-full mr-2 bg-green-500"></span>
                     {selectedGroup?.member_count} members
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 cursor-pointer pr-5">
-                <BsTelephoneForwardFill size={18} />
+              <div className="text-gray-400 hover:text-gray-600 cursor-pointer transition-colors duration-200">
+                <BsTelephoneForwardFill size={20} />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-gray-50 to-gray-100">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-gray-50 to-gray-100">
               {isLoading ? (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-lg">Loading messages...</div>
+                <div className="text-center text-gray-500 py-12">
+                  <div className="text-lg font-medium">Loading messages...</div>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-lg">No messages yet</div>
+                <div className="text-center text-gray-500 py-12">
+                  <div className="text-lg font-medium mb-2">
+                    No messages yet
+                  </div>
                   <div className="text-sm">Start a conversation!</div>
                 </div>
               ) : (
@@ -1208,9 +1209,8 @@ export default function Chat() {
                         isMyMessage ? "justify-end " : "justify-start"
                       }`}
                     >
-                      {/* Sender avatar faqat delete qilinmagan xabarda ko'rsatiladi */}
                       {!isMyMessage && !msg.isDeleted && (
-                        <div className="w-8 h-8 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3 mt-1 flex-shrink-0">
+                        <div className="w-9 h-9 bg-gradient-to-br from-gray-400 to-gray-600 rounded-full flex items-center justify-center text-white text-sm font-medium mr-3 mt-1 flex-shrink-0 shadow-sm">
                           {senderName?.charAt(0) || "?"}
                         </div>
                       )}
@@ -1218,16 +1218,16 @@ export default function Chat() {
                       <div className="flex flex-col max-w-[75%]">
                         {/* Sender ismi faqat delete qilinmagan xabarda */}
                         {!isMyMessage && !selectedUser && !msg.isDeleted && (
-                          <div className="text-xs font-medium mb-1 text-gray-600 ml-1">
+                          <div className="text-xs font-semibold mb-2 text-gray-600 ml-1">
                             {senderName}
                           </div>
                         )}
 
                         <div
-                          className={`px-4 py-3 rounded-2xl break-words relative shadow-sm ${
+                          className={`px-5 py-3 rounded-2xl break-words relative shadow-md transition-all duration-200 hover:shadow-lg ${
                             isMyMessage
                               ? "bg-blue-500 text-white rounded-br-md"
-                              : "bg-gray-200 text-gray-800 rounded-bl-md"
+                              : "bg-white text-gray-800 rounded-bl-md border border-gray-100"
                           }`}
                         >
                           <div className="text-sm leading-relaxed">
@@ -1253,11 +1253,11 @@ export default function Chat() {
 
                           {!msg.isDeleted && (
                             <div
-                              className={`text-xs mt-2 flex justify-between items-center ${
+                              className={`text-xs mt-3 flex justify-between items-center ${
                                 isMyMessage ? "text-blue-100" : "text-gray-500"
                               }`}
                             >
-                              <span>
+                              <span className="font-medium">
                                 {new Date(msg.timestamp).toLocaleTimeString(
                                   [],
                                   {
@@ -1269,20 +1269,20 @@ export default function Chat() {
                               </span>
 
                               {isMyMessage && !msg.isLoading && (
-                                <div className="flex ml-2">
+                                <div className="flex ml-3 gap-1">
                                   <button
-                                    className="hover:text-red-500 cursor-pointer"
+                                    className="hover:text-red-400 cursor-pointer p-1 rounded transition-colors duration-200"
                                     onClick={() => deleteMessage(msg.id)}
                                     title="O'chirish"
                                   >
-                                    <MdDelete />
+                                    <MdDelete size={14} />
                                   </button>
                                   <button
-                                    className="ml-2 hover:text-yellow-500 cursor-pointer"
+                                    className="hover:text-yellow-400 cursor-pointer p-1 rounded transition-colors duration-200"
                                     onClick={() => startEdit(msg)}
                                     title="Tahrirlash"
                                   >
-                                    <MdEdit />
+                                    <MdEdit size={14} />
                                   </button>
                                 </div>
                               )}
@@ -1292,7 +1292,7 @@ export default function Chat() {
                       </div>
 
                       {isMyMessage && !msg.isDeleted && (
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-medium ml-3 mt-1 flex-shrink-0">
+                        <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-sm font-semibold ml-3 mt-1 flex-shrink-0 shadow-md">
                           Me
                         </div>
                       )}
@@ -1303,7 +1303,7 @@ export default function Chat() {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="flex items-center p-4 bg-white border-t border-gray-200 shadow-sm">
+            <div className="flex items-center p-5 bg-white border-t border-gray-200 shadow-lg">
               <div className="flex-1 relative">
                 <input
                   type="text"
@@ -1319,23 +1319,23 @@ export default function Chat() {
                       cancelEdit();
                     }
                   }}
-                  className="w-full border-2 border-gray-200 rounded-full px-5 py-3 pr-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-400 bg-gray-50 focus:bg-white"
+                  className="w-full border-2 border-gray-200 rounded-full px-6 py-4 pr-28 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm placeholder-gray-400 bg-gray-50 focus:bg-white shadow-sm"
                   disabled={!isConnected || isLoading}
                 />
 
                 {editingMessage ? (
-                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex space-x-2">
                     <button
                       onClick={saveEdit}
                       disabled={!content.trim()}
-                      className="bg-green-500 hover:bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
                       title="Saqlash"
                     >
                       ✓
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="bg-gray-500 hover:bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                      className="bg-gray-500 hover:bg-gray-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
                       title="Bekor qilish"
                     >
                       ✕
@@ -1345,7 +1345,7 @@ export default function Chat() {
                   <button
                     onClick={sendMessage}
                     disabled={!content.trim()}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-500 hover:bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 shadow-md hover:shadow-lg"
                     title="Yuborish"
                   >
                     ➤
@@ -1357,7 +1357,7 @@ export default function Chat() {
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-gray-500 text-center">
-              <div className="text-lg mb-2">
+              <div className="text-xl font-medium mb-3">
                 Select a group to start chatting
               </div>
               <div className="text-sm">
@@ -1368,82 +1368,90 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Guruh yaratish modali */}
       {showCreateGroupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
-            <h2 className="text-xl font-bold mb-4">Create New Group</h2>
+        <div className="fixed inset-0 backdrop-blur-sm bg-opacity-50 flex items-center justify-center z-50 ">
+          <div className="bg-white rounded-2xl p-8 w-96 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">
+              Create New Group
+            </h2>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
+            <div className="mb-5">
+              <label className="block text-sm font-semibold mb-2 text-gray-700">
                 Group Name
               </label>
               <input
                 type="text"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 placeholder="Enter group name"
               />
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">
+            <div className="mb-5">
+              <label className="block text-sm font-semibold mb-2 text-gray-700">
                 Description
               </label>
               <textarea
                 value={newGroupDescription}
                 onChange={(e) => setNewGroupDescription(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
                 placeholder="Enter group description"
                 rows="3"
               />
             </div>
 
-            <div className="mb-4">
-              <label className="flex items-center">
+            <div className="mb-5">
+              <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isPublicGroup}
                   onChange={(e) => setIsPublicGroup(e.target.checked)}
-                  className="mr-2"
+                  className="mr-3 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
-                <span className="text-sm">Public Group</span>
+                <span className="text-sm font-medium text-gray-700">
+                  Public Group
+                </span>
               </label>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-3 text-gray-700">
                 Select Members
               </label>
-              <div className="border border-gray-300 rounded p-2 max-h-40 overflow-y-auto">
+              <div className="border-2 border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto bg-gray-50">
                 {users.map((user) => (
-                  <div key={user.id} className="flex items-center mb-2">
+                  <div
+                    key={user.id}
+                    className="flex items-center mb-3 last:mb-0"
+                  >
                     <input
                       type="checkbox"
                       checked={selectedMembers.some((m) => m.id === user.id)}
                       onChange={() => toggleMemberSelection(user)}
-                      className="mr-2"
+                      className="mr-3 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm">{user.fio || user.username}</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      {user.fio || user.username}
+                    </span>
                   </div>
                 ))}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-500 mt-2 font-medium">
                 {selectedMembers.length} members selected
               </div>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowCreateGroupModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded text-sm"
+                className="px-6 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all duration-200"
               >
                 Cancel
               </button>
               <button
                 onClick={createGroup}
-                className="px-4 py-2 bg-blue-500 text-white rounded text-sm"
+                className="px-6 py-3 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
               >
                 Create Group
               </button>

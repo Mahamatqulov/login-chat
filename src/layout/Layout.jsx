@@ -4,7 +4,7 @@ import Sidebar from "../page/Sidebar";
 function Layaut() {
   return (
     <>
-      <div className="flex h-screen gap-2">
+      <div className="flex h-screen w-screen gap-5 ">
         <Sidebar />
         <main>
           <Outlet />
